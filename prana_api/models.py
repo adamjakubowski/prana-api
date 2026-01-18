@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Callable
 
 
 @dataclass
@@ -349,7 +349,7 @@ class PageData:
     has_next: bool
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], item_factory: callable = None) -> "PageData":
+    def from_dict(cls, data: dict[str, Any], item_factory: Callable | None = None) -> "PageData":
         """Create PageData from API response."""
         items = data.get("data", [])
         if item_factory:

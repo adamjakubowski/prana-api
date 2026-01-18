@@ -415,7 +415,7 @@ class PranaClient:
         if not customer_id:
             raise PranaAPIError("Could not determine customer ID")
 
-        params = {
+        params: dict[str, Any] = {
             "page": page,
             "pageSize": page_size,
         }
@@ -465,7 +465,7 @@ class PranaClient:
             Telemetry data as dict
         """
         endpoint = f"{Endpoints.TELEMETRY}/{EntityType.DEVICE}/{device_id}/values/timeseries"
-        params = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if keys:
             params["keys"] = ",".join(keys)
         if start_ts:

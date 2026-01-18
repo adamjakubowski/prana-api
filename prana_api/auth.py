@@ -3,7 +3,7 @@
 import base64
 import json
 import time
-from typing import Any
+from typing import Any, Callable
 
 from .models import TokenPair
 
@@ -107,7 +107,7 @@ class TokenManager:
             token_pair: Initial token pair
         """
         self._token_pair = token_pair
-        self._refresh_callback: callable | None = None
+        self._refresh_callback: Callable | None = None
 
     @property
     def access_token(self) -> str | None:
@@ -126,7 +126,7 @@ class TokenManager:
     @property
     def is_authenticated(self) -> bool:
         """Check if we have valid tokens."""
-        return self._token_pair is not None and self._token_pair.access_token
+        return self._token_pair is not None and bool(self._token_pair.access_token)
 
     @property
     def is_access_token_expired(self) -> bool:
@@ -154,7 +154,7 @@ class TokenManager:
         """Clear all tokens."""
         self._token_pair = None
 
-    def set_refresh_callback(self, callback: callable) -> None:
+    def set_refresh_callback(self, callback: Callable) -> None:
         """Set callback for token refresh.
 
         Args:
