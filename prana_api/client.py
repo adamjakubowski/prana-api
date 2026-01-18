@@ -10,7 +10,7 @@ from .constants import (
     BASE_URL,
     DEFAULT_RPC_TIMEOUT,
     DEFAULT_TIMEOUT,
-    AttributeScope,
+    AttributeScope, # noqa: F401
     EntityType,
     Endpoints,
 )
@@ -28,7 +28,7 @@ from .exceptions import (
 from .models import (
     Device,
     EntityGroup,
-    EntityId,
+    EntityId, # noqa: F401
     PageData,
     PranaState,
     TokenPair,
