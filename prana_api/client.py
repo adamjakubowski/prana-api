@@ -635,6 +635,204 @@ class PranaClient:
             {"scenarios": scenarios},
         )
 
+    async def speed_up(self, device_id: str) -> None:
+        """Increase fan speed by one step.
+
+        This increases both supply (inbound) and extract (exhaust) fan speeds
+        when in bounded mode, or the currently selected fan otherwise.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=2)
+
+    async def speed_down(self, device_id: str) -> None:
+        """Decrease fan speed by one step.
+
+        This decreases both supply (inbound) and extract (exhaust) fan speeds
+        when in bounded mode, or the currently selected fan otherwise.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=3)
+
+    async def set_fan_speed(
+        self,
+        device_id: str,
+        target_speed: int,
+        fan: str = "both",
+    ) -> PranaState:
+        """Set fan speed to a specific level.
+
+        Since the API only supports button-based speed control, this method
+        repeatedly sends speed up/down commands to reach the target speed.
+
+        Args:
+            device_id: Device ID
+            target_speed: Target speed level (0-5)
+            fan: Which fan to control - "supply" (inbound), "extract" (exhaust),
+                 or "both" (default). Note: "both" only works in bounded mode.
+
+        Returns:
+            Updated PranaState after speed change
+
+        Raises:
+            ValueError: If target_speed is not in range 0-5
+            ValueError: If fan is not one of "supply", "extract", or "both"
+        """
+        if not 0 <= target_speed <= 5:
+            raise ValueError("target_speed must be between 0 and 5")
+        if fan not in ("supply", "extract", "both"):
+            raise ValueError("fan must be 'supply', 'extract', or 'both'")
+
+        state = await self.get_device_state(device_id)
+
+        if fan == "both":
+            current_speed = state.supply_speed or 0
+        elif fan == "supply":
+            current_speed = state.supply_speed or 0
+        else:
+            current_speed = state.extract_speed or 0
+
+        diff = target_speed - current_speed
+
+        if diff > 0:
+            for _ in range(diff):
+                await self.speed_up(device_id)
+        elif diff < 0:
+            for _ in range(abs(diff)):
+                await self.speed_down(device_id)
+
+        return await self.get_device_state(device_id)
+
+    # ==================== Individual Fan Speed Control ====================
+
+    async def toggle_bounded_mode(self, device_id: str) -> None:
+        """Toggle bounded mode (link/unlink supply and extract fans).
+
+        When bounded mode is ON, both fans operate at the same speed.
+        When bounded mode is OFF, fans can be controlled independently.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=7)
+
+    async def supply_speed_up(self, device_id: str) -> None:
+        """Increase supply (incoming) fan speed by one step.
+
+        This controls only the supply fan, regardless of bounded mode.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=8)
+
+    async def supply_speed_down(self, device_id: str) -> None:
+        """Decrease supply (incoming) fan speed by one step.
+
+        This controls only the supply fan, regardless of bounded mode.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=9)
+
+    async def extract_speed_up(self, device_id: str) -> None:
+        """Increase extract (outgoing) fan speed by one step.
+
+        This controls only the extract fan, regardless of bounded mode.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=10)
+
+    async def extract_speed_down(self, device_id: str) -> None:
+        """Decrease extract (outgoing) fan speed by one step.
+
+        This controls only the extract fan, regardless of bounded mode.
+
+        Args:
+            device_id: Device ID
+        """
+        await self.button_click(device_id, button_number=11)
+
+    async def set_supply_speed(
+        self,
+        device_id: str,
+        target_speed: int,
+    ) -> PranaState:
+        """Set supply (incoming) fan speed to a specific level.
+
+        This controls only the supply fan by sending multiple speed
+        up/down commands.
+
+        Args:
+            device_id: Device ID
+            target_speed: Target speed level (0-5)
+
+        Returns:
+            Updated PranaState after speed change
+
+        Raises:
+            ValueError: If target_speed is not in range 0-5
+        """
+        if not 0 <= target_speed <= 5:
+            raise ValueError("target_speed must be between 0 and 5")
+
+        state = await self.get_device_state(device_id)
+        current_speed = state.supply_speed or 0
+
+        diff = target_speed - current_speed
+
+        if diff > 0:
+            for _ in range(diff):
+                await self.supply_speed_up(device_id)
+        elif diff < 0:
+            for _ in range(abs(diff)):
+                await self.supply_speed_down(device_id)
+
+        return await self.get_device_state(device_id)
+
+    async def set_extract_speed(
+        self,
+        device_id: str,
+        target_speed: int,
+    ) -> PranaState:
+        """Set extract (outgoing) fan speed to a specific level.
+
+        This controls only the extract fan by sending multiple speed
+        up/down commands.
+
+        Args:
+            device_id: Device ID
+            target_speed: Target speed level (0-5)
+
+        Returns:
+            Updated PranaState after speed change
+
+        Raises:
+            ValueError: If target_speed is not in range 0-5
+        """
+        if not 0 <= target_speed <= 5:
+            raise ValueError("target_speed must be between 0 and 5")
+
+        state = await self.get_device_state(device_id)
+        current_speed = state.extract_speed or 0
+
+        diff = target_speed - current_speed
+
+        if diff > 0:
+            for _ in range(diff):
+                await self.extract_speed_up(device_id)
+        elif diff < 0:
+            for _ in range(abs(diff)):
+                await self.extract_speed_down(device_id)
+
+        return await self.get_device_state(device_id)
+
     # ==================== Entity Groups ====================
 
     async def get_entity_groups(
@@ -867,4 +1065,55 @@ class PranaClientSync:
         """Get devices in group."""
         return self._run(
             self._async_client.get_group_devices(group_id, page, page_size)
+        )
+
+    def speed_up(self, device_id: str) -> None:
+        """Increase fan speed by one step."""
+        self._run(self._async_client.speed_up(device_id))
+
+    def speed_down(self, device_id: str) -> None:
+        """Decrease fan speed by one step."""
+        self._run(self._async_client.speed_down(device_id))
+
+    def set_fan_speed(
+        self,
+        device_id: str,
+        target_speed: int,
+        fan: str = "both",
+    ) -> PranaState:
+        """Set fan speed to a specific level (0-5)."""
+        return self._run(
+            self._async_client.set_fan_speed(device_id, target_speed, fan)
+        )
+
+    def toggle_bounded_mode(self, device_id: str) -> None:
+        """Toggle bounded mode (link/unlink supply and extract fans)."""
+        self._run(self._async_client.toggle_bounded_mode(device_id))
+
+    def supply_speed_up(self, device_id: str) -> None:
+        """Increase supply (incoming) fan speed by one step."""
+        self._run(self._async_client.supply_speed_up(device_id))
+
+    def supply_speed_down(self, device_id: str) -> None:
+        """Decrease supply (incoming) fan speed by one step."""
+        self._run(self._async_client.supply_speed_down(device_id))
+
+    def extract_speed_up(self, device_id: str) -> None:
+        """Increase extract (outgoing) fan speed by one step."""
+        self._run(self._async_client.extract_speed_up(device_id))
+
+    def extract_speed_down(self, device_id: str) -> None:
+        """Decrease extract (outgoing) fan speed by one step."""
+        self._run(self._async_client.extract_speed_down(device_id))
+
+    def set_supply_speed(self, device_id: str, target_speed: int) -> PranaState:
+        """Set supply (incoming) fan speed to a specific level (0-5)."""
+        return self._run(
+            self._async_client.set_supply_speed(device_id, target_speed)
+        )
+
+    def set_extract_speed(self, device_id: str, target_speed: int) -> PranaState:
+        """Set extract (outgoing) fan speed to a specific level (0-5)."""
+        return self._run(
+            self._async_client.set_extract_speed(device_id, target_speed)
         )

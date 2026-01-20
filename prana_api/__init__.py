@@ -44,6 +44,7 @@ from .client import PranaClient, PranaClientSync
 from .constants import (
     BASE_URL,
     AttributeScope,
+    ButtonNumber,
     DeviceStateKey,
     Endpoints,
     EntityType,
@@ -79,6 +80,7 @@ __all__ = [
     # Constants
     "BASE_URL",
     "AttributeScope",
+    "ButtonNumber",
     "DeviceStateKey",
     "Endpoints",
     "EntityType",

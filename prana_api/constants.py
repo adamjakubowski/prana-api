@@ -76,6 +76,43 @@ class RPCMethod:
     SET_FIRMWARE = "setFw"
 
 
+# Button numbers for Prana device control
+# These map to physical/virtual buttons on the device.
+# The device is controlled by sending buttonClicked RPC with a buttonNumber.
+class ButtonNumber:
+    """Known button numbers for Prana device control.
+
+    These button numbers are used with the buttonClicked RPC method.
+    Some mappings may vary by device model or firmware version.
+    """
+
+    # Power control
+    POWER = 1  # Toggle power on/off
+
+    # Speed control (global - affects both fans in bounded mode)
+    SPEED_UP = 2  # Increase fan speed
+    SPEED_DOWN = 3  # Decrease fan speed
+
+    # Mode toggles
+    NIGHT_MODE = 4  # Toggle night mode
+    AUTO_MODE = 5  # Toggle auto mode
+    HEATER = 6  # Toggle heater (winter mode)
+    BOUNDED_MODE = 7  # Toggle bounded mode (link/unlink supply and extract fans)
+
+    # Individual fan control (when bounded mode is OFF)
+    # These buttons control supply and extract fans independently
+    SUPPLY_SPEED_UP = 8  # Increase supply (incoming) fan speed
+    SUPPLY_SPEED_DOWN = 9  # Decrease supply (incoming) fan speed
+    EXTRACT_SPEED_UP = 10  # Increase extract (outgoing) fan speed
+    EXTRACT_SPEED_DOWN = 11  # Decrease extract (outgoing) fan speed
+
+    # Timer/Sleep
+    SLEEP_TIMER = 12  # Toggle or cycle sleep timer
+
+    # Display
+    BRIGHTNESS = 13  # Cycle display brightness
+
+
 # Device state keys (actual API keys from Prana/ThingsBoard)
 class DeviceStateKey:
     """Known device telemetry/attribute keys."""

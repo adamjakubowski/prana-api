@@ -67,11 +67,38 @@ client.logout()
 client.close()
 ```
 
+### Independent Fan Control
+
+```python
+import asyncio
+from prana_api import PranaClient
+
+async def main():
+    async with PranaClient() as client:
+        await client.login("your@email.com", "password")
+
+        devices = await client.get_user_devices()
+        device_id = devices[0].device_id
+
+        # Set different speeds for incoming and outgoing air
+        await client.set_supply_speed(device_id, target_speed=4)   # Incoming air
+        await client.set_extract_speed(device_id, target_speed=2)  # Outgoing air
+
+        # Check result
+        state = await client.get_device_state(device_id)
+        print(f"Supply: {state.supply_speed}, Extract: {state.extract_speed}")
+        print(f"Bounded mode: {state.is_bounded_mode}")
+
+asyncio.run(main())
+```
+
 ## Features
 
 - **Authentication**: Login, logout, token refresh, password change/reset
 - **Device Management**: List devices, get device info
-- **Telemetry**: Read device sensor data (temperature, humidity, CO2, VOC)
+- **Telemetry**: Read device sensor data (temperature, humidity, CO2, VOC, pressure)
+- **Fan Speed Control**: Independent control of supply (incoming) and extract (outgoing) fans
+- **Mode Control**: Toggle bounded mode, night mode, auto mode, heater
 - **Device Control**: Send RPC commands to control devices
 - **Entity Groups**: Manage device groups
 
@@ -151,6 +178,36 @@ await client.rename_device(device_id, "New Name")
 await client.set_auto_heater_temperature(device_id, temperature=20)
 ```
 
+#### Fan Speed Control
+
+The Prana device has two fans that can be controlled independently:
+- **Supply fan**: Controls incoming (fresh) air from outside
+- **Extract fan**: Controls outgoing (exhaust) air to outside
+
+Speed values range from 0 (off) to 5 (maximum).
+
+```python
+# Control both fans together (bounded mode)
+await client.speed_up(device_id)      # Increase both fans
+await client.speed_down(device_id)    # Decrease both fans
+await client.set_fan_speed(device_id, target_speed=3)
+
+# Control fans independently
+await client.set_supply_speed(device_id, target_speed=4)   # Set incoming air
+await client.set_extract_speed(device_id, target_speed=2)  # Set outgoing air
+
+# Step control for individual fans
+await client.supply_speed_up(device_id)
+await client.supply_speed_down(device_id)
+await client.extract_speed_up(device_id)
+await client.extract_speed_down(device_id)
+
+# Toggle bounded mode (link/unlink fans)
+await client.toggle_bounded_mode(device_id)
+```
+
+**Bounded Mode**: When enabled, both fans operate at the same speed. When disabled, fans can be controlled independently using the methods above.
+
 ### Models
 
 #### PranaState
@@ -160,35 +217,36 @@ Represents the current state of a Prana device:
 ```python
 @dataclass
 class PranaState:
-    # Speed (0-10)
-    supply_speed: int | None
-    extract_speed: int | None
+    # Speed (0-5)
+    supply_speed: int | None   # Incoming air fan speed
+    extract_speed: int | None  # Outgoing air fan speed
 
     # Modes
-    is_auto: bool
-    is_auto_plus: bool
-    is_boost_mode: bool
+    is_power_on: bool
+    is_auto_mode: bool
+    is_bounded_mode: bool  # True = fans linked, False = independent control
     is_night_mode: bool
-    is_winter: bool
-    is_heater: bool
+    is_heater_on: bool
 
     # Timer
     is_sleep_timer: bool
-    seconds_sleep_timer: int
+    sleep_seconds: int
 
     # Settings
     brightness: int | None
-    heater_temperature: int | None
 
     # Sensors
     co2: int | None
     voc: int | None
     humidity: float | None
     temperature: float | None
+    pressure: int | None
 
     # Status
     is_online: bool
     is_defrosting: bool
+    wifi_rssi: int | None
+    firmware_version: int | None
 ```
 
 ### Exceptions
@@ -218,6 +276,35 @@ Based on reverse engineering, these RPC methods are available:
 | `setAutoHeaterTemperature` | `{"autoHeaterTemperature": int}` | Set heater temp |
 | `setScenariosV2` | `{"scenarios": [...]}` | Set schedules |
 | `setFw` | `{"fw": str}` | Update firmware |
+
+## Button Numbers
+
+The device is controlled by sending `buttonClicked` RPC commands with a button number.
+These are available as constants in the `ButtonNumber` class:
+
+```python
+from prana_api import ButtonNumber
+
+await client.button_click(device_id, ButtonNumber.SUPPLY_SPEED_UP)
+```
+
+| Button | Number | Description |
+|--------|--------|-------------|
+| `POWER` | 1 | Toggle power on/off |
+| `SPEED_UP` | 2 | Increase fan speed (both fans in bounded mode) |
+| `SPEED_DOWN` | 3 | Decrease fan speed (both fans in bounded mode) |
+| `NIGHT_MODE` | 4 | Toggle night mode |
+| `AUTO_MODE` | 5 | Toggle auto mode |
+| `HEATER` | 6 | Toggle heater (winter mode) |
+| `BOUNDED_MODE` | 7 | Toggle bounded mode (link/unlink fans) |
+| `SUPPLY_SPEED_UP` | 8 | Increase supply (incoming) fan speed |
+| `SUPPLY_SPEED_DOWN` | 9 | Decrease supply (incoming) fan speed |
+| `EXTRACT_SPEED_UP` | 10 | Increase extract (outgoing) fan speed |
+| `EXTRACT_SPEED_DOWN` | 11 | Decrease extract (outgoing) fan speed |
+| `SLEEP_TIMER` | 12 | Toggle or cycle sleep timer |
+| `BRIGHTNESS` | 13 | Cycle display brightness |
+
+> **Note**: Button mappings may vary by device model or firmware version. Test carefully with your specific device.
 
 ## Environment Variables
 
